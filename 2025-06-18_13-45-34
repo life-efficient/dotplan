@@ -1,0 +1,61 @@
+# 🧠 Setting Up a Headless Pi Zero Over USB and Hotspot — The Actual Process
+
+I wanted to set up a Raspberry Pi Zero with no monitor, no keyboard, no Ethernet — just a USB cable and SSH access. The goal was to connect via cable first, then get it onto my phone's hotspot for wireless SSH.
+
+It turned out to be way more fragile than expected.
+
+## ✅ The Intended Plan
+
+1. Plug Pi Zero into my Mac via USB (data port)
+2. Enable USB Ethernet with `g_ether`
+3. SSH into the Pi over cable
+4. Set up Wi-Fi from there
+
+## ❌ What Went Wrong
+
+I edited `cmdline.txt` and `config.txt` correctly:
+
+```lua
+rootwait modules-load=dwc2,g_ether
+dtoverlay=dwc2
+```
+
+- Used a known-good data cable
+- Plugged into the correct port
+- Still, nothing showed up on the Mac. No USB Ethernet, no IP, no response.
+
+I added a script (`configure_network.sh`) with `init=/boot/configure_network.sh` in `cmdline.txt` to assign a static IP on boot. That got ignored — turns out systemd doesn't respect `init=` unless you're replacing the entire init process. Not happening.
+
+Eventually the SD card corrupted and I couldn't even mount the boot volume anymore. So I started from scratch.
+
+## 🧼 What Worked
+
+- Reflashed with Raspberry Pi OS Lite (32-bit)
+- Used Raspberry Pi Imager's advanced config (press Ctrl+Shift+X)
+- Set:
+  - Hostname: `pi-01`
+  - Enabled SSH
+  - Wi-Fi SSID: `YOUR HOTSPOT NAME`
+  - Password: `YOUR HOTSPOT PASSWORD`
+  - Country: `SA`
+
+The Pi still didn't connect — until I enabled "Maximize Compatibility" on my iPhone hotspot. That forces 2.4GHz, which the Pi Zero needs.
+
+After that, green LED blinked continuously, and I SSH'd in instantly:
+
+```bash
+ssh pi@pi-01.local
+```
+
+## 🧠 Notes from the Process
+
+- `.local` only works if your Mac and Pi are on the same network
+- The Pi keeps trying Wi-Fi indefinitely — blinking green LED = it's alive
+- `init=` doesn't work with systemd, don't waste time there
+- If your Mac doesn't see the Pi at all over USB, `g_ether` probably never loaded — likely due to 64-bit OS or a missed config step
+- If the boot partition won't mount and `ls` returns garbage, your SD is toast
+
+## 🚀 Next Steps
+
+- Automate the setup across multiple Pis
+- Get USB fallback working with `rc.local`
